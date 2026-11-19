@@ -104,6 +104,10 @@ def get_effective_budget_settings(cfg: Dict[str, Any]) -> Dict[str, Any]:
     b5 = max(0.01, b5)
     b7 = max(0.01, b7)
 
+    lang = str(cfg.get("lang") or "auto").lower()
+    if lang not in ("auto", "zh", "en"):
+        lang = "auto"
+
     return {
         "plan": plan,
         "plan_label": preset["label"],
@@ -112,6 +116,7 @@ def get_effective_budget_settings(cfg: Dict[str, Any]) -> Dict[str, Any]:
         "budget_weekly_usd": b7,
         "per_member_5h_usd": b5 / family_size,
         "per_member_weekly_usd": b7 / family_size,
+        "lang": lang,
     }
 
 

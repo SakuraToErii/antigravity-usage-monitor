@@ -190,6 +190,8 @@ class Handler(BaseHTTPRequestHandler):
                 cfg["budget_weekly_usd"] = max(0.01, float(body["budget_weekly_usd"]))
             if "remote_auto_sync_sec" in body and body["remote_auto_sync_sec"] is not None:
                 cfg["remote_auto_sync_sec"] = max(0, int(body["remote_auto_sync_sec"]))
+            if "lang" in body and body["lang"] in ("auto", "zh", "en"):
+                cfg["lang"] = body["lang"]
             if body.get("clear_anchors"):
                 cfg.pop("reset_5h_anchor_epoch", None)
                 cfg.pop("reset_weekly_anchor_epoch", None)

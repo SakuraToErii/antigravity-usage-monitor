@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>用量监控</title>
+<title>Usage Monitor</title>
 <style>
   :root {
     color-scheme: light dark;
@@ -70,8 +70,8 @@
     gap: 8px;
     margin-bottom: 14px;
   }
-  .brand { font-size: 14px; font-weight: 600; letter-spacing: -0.1px; }
-  .controls { display: flex; align-items: center; gap: 6px; }
+  .brand { font-size: 14px; font-weight: 600; letter-spacing: -0.1px; white-space: nowrap; }
+  .controls { display: flex; align-items: center; gap: 5px; }
 
   select, input[type="number"], input[type="text"], textarea {
     background: var(--surface);
@@ -98,7 +98,7 @@
     border: 0;
     background: transparent;
     color: var(--muted);
-    width: 22px;
+    width: 21px;
     height: 100%;
     padding: 0;
     cursor: pointer;
@@ -110,7 +110,7 @@
     padding: 0 4px;
     font-size: 12px;
     font-weight: 600;
-    min-width: 30px;
+    min-width: 28px;
     text-align: center;
     font-variant-numeric: tabular-nums;
   }
@@ -120,11 +120,12 @@
     color: var(--muted);
     border: 1px solid var(--border);
     border-radius: 7px;
-    width: 26px;
+    min-width: 26px;
     height: 26px;
-    padding: 0;
+    padding: 0 5px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 12px;
+    font-weight: 600;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -252,7 +253,6 @@
   .check { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); cursor: pointer; }
   .toast { font-size: 11.5px; color: var(--ok); min-height: 15px; }
 
-  /* Remote SSH section */
   .remote-list { display: flex; flex-direction: column; gap: 6px; }
   .remote-item {
     display: flex;
@@ -303,20 +303,21 @@
 </head>
 <body>
   <div class="toolbar">
-    <div class="brand">用量监控</div>
+    <div class="brand" id="brandTitle">用量监控</div>
     <div class="controls">
-      <select id="planSelect" title="订阅档位">
+      <select id="planSelect">
         <option value="pro">Pro</option>
         <option value="ultra_5x">Ultra 5x</option>
         <option value="ultra_20x">Ultra 20x</option>
-        <option value="custom">自定义</option>
+        <option value="custom" id="optCustom">自定义</option>
       </select>
-      <div class="fam-pill" title="家庭组人数">
+      <div class="fam-pill" id="famPill">
         <button id="famMinus" type="button">−</button>
         <span id="famLabel">1人</span>
         <button id="famPlus" type="button">+</button>
       </div>
-      <button id="btnRefresh" class="icon-btn" title="刷新扫描（含已启用的 SSH 远程主机）">↻</button>
+      <button id="btnLang" class="icon-btn" type="button">EN</button>
+      <button id="btnRefresh" class="icon-btn" type="button">↻</button>
     </div>
   </div>
 
@@ -324,19 +325,19 @@
 
   <div class="panel">
     <div class="tabs">
-      <div class="tab active" data-tab="w5h">5 小时</div>
-      <div class="tab" data-tab="w7d">每周</div>
-      <div class="tab" data-tab="all">总计</div>
+      <div class="tab active" data-tab="w5h" id="tab5h">5 小时</div>
+      <div class="tab" data-tab="w7d" id="tab7d">每周</div>
+      <div class="tab" data-tab="all" id="tabAll">总计</div>
     </div>
     <div class="summary-strip" id="summaryStrip"></div>
     <div class="host-strip" id="hostStrip" style="display:none"></div>
     <table>
       <thead>
         <tr>
-          <th>模型</th>
-          <th class="num">轮次</th>
-          <th class="num">命中</th>
-          <th class="num">费用</th>
+          <th id="thModel">模型</th>
+          <th class="num" id="thCalls">轮次</th>
+          <th class="num" id="thHit">命中</th>
+          <th class="num" id="thCost">费用</th>
         </tr>
       </thead>
       <tbody id="modelRows"></tbody>
@@ -346,13 +347,13 @@
   <div class="drawers">
     <details class="drawer" id="remoteDrawer">
       <summary>
-        <span>远程 SSH 主机</span>
+        <span id="remoteTitle">远程 SSH 主机</span>
         <span class="sum-right" id="remoteSummary">未启用</span>
       </summary>
       <div class="drawer-body">
         <div class="remote-list" id="remoteList"></div>
         <div id="sshDiscoverWrap" style="display:none">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">从 ~/.ssh/config 一键添加</div>
+          <div id="sshDiscoverLabel" style="font-size:11px;color:var(--muted);margin-bottom:5px;">从 ~/.ssh/config 一键添加</div>
           <div class="chip-row" id="sshChips"></div>
         </div>
         <div class="add-row">
@@ -362,7 +363,7 @@
         <div class="actions">
           <label class="check">
             <input type="checkbox" id="chkAutoSync" />
-            <span>自动同步</span>
+            <span id="lblAutoSync">自动同步</span>
           </label>
           <span class="toast" id="remoteToast"></span>
           <button id="btnSyncRemote" class="btn primary">立即同步</button>
@@ -372,17 +373,17 @@
 
     <details class="drawer">
       <summary>
-        <span>额度与周期校准</span>
+        <span id="calibTitle">额度与周期校准</span>
         <span class="sum-right"></span>
       </summary>
       <div class="drawer-body">
         <div class="row-2">
           <div class="field">
-            <label>5 小时总池 ($)</label>
+            <label id="lblBudget5h">5 小时总池 ($)</label>
             <input id="budget5h" type="number" step="1" min="0.1" />
           </div>
           <div class="field">
-            <label>每周总池 ($)</label>
+            <label id="lblBudgetWeekly">每周总池 ($)</label>
             <input id="budgetWeekly" type="number" step="5" min="0.1" />
           </div>
         </div>
@@ -391,12 +392,12 @@
           <button id="btnSaveBudget" class="btn primary">保存额度</button>
         </div>
         <div class="field">
-          <label>粘贴 /usage 输出对齐周期</label>
+          <label id="lblUsagePaste">粘贴 /usage 输出对齐周期</label>
           <textarea id="usagePaste" rows="4" placeholder="粘贴 /usage 文本，自动同步重置时间"></textarea>
         </div>
         <label class="check">
           <input type="checkbox" id="chkCalibBudgets" />
-          <span>同时按官方剩余 % 反推更新总池额度</span>
+          <span id="lblCalibBudgets">同时按官方剩余 % 反推更新总池额度</span>
         </label>
         <div class="actions">
           <button id="btnClearAnchors" class="btn">恢复自动</button>
@@ -407,21 +408,200 @@
   </div>
 
 <script>
-(function initTheme() {
-  const qp = new URLSearchParams(window.location.search).get('theme');
-  if (qp === 'dark' || qp === 'light') {
-    document.documentElement.dataset.theme = qp;
+const I18N = {
+  zh: {
+    brand: '用量监控',
+    planTitle: '订阅档位',
+    custom: '自定义',
+    famTitle: '家庭组人数',
+    famUnit: '人',
+    langBtn: 'EN',
+    langTitle: 'Switch to English',
+    refreshTitle: '刷新扫描（含已启用的 SSH 远程主机）',
+    w5hTitle: '5 小时额度',
+    w7dTitle: '每周额度',
+    resetsIn: d => `${d} 后刷新`,
+    idle: '空闲待计',
+    tab5h: '5 小时',
+    tab7d: '每周',
+    tabAll: '总计',
+    statEquiv: '等效费用',
+    statHit: '缓存命中',
+    statSaved: '缓存节省',
+    thModel: '模型',
+    thCalls: '轮次',
+    thHit: '命中',
+    thCost: '费用',
+    noRows: '暂无记录',
+    hostLocal: '本机',
+    hostTip: (l, c) => `${l} · ${c} 轮`,
+    modelTip: (i, cr, o, s) => `未缓存输入 ${i} · 缓存读 ${cr} · 输出 ${o} · 缓存节省 ${s}`,
+    remoteTitle: '远程 SSH 主机',
+    remoteOff: '未启用',
+    remoteSyncing: '同步中…',
+    remoteOn: n => `${n} 台`,
+    remoteOnErr: (n, e) => `${n} 台 (${e} 异常)`,
+    remoteEmpty: '添加 SSH 主机后，自动汇总远端 App / agy CLI 用量',
+    sshDiscover: '从 ~/.ssh/config 一键添加',
+    sshPlaceholder: '主机别名或 user@host[:port]',
+    btnAdd: '添加',
+    autoSync: '自动同步',
+    btnSyncNow: '立即同步',
+    stDisabled: '已停用',
+    stError: '连接失败',
+    stPending: '待同步',
+    stScanned: (f, ms) => `已扫描 ${f} 个会话 (${ms}ms)`,
+    syncOneTitle: '同步此主机',
+    removeTitle: '移除',
+    justNow: '刚刚',
+    mAgo: m => `${m}m前`,
+    hAgo: h => `${h}h前`,
+    dAgo: d => `${d}d前`,
+    calibTitle: '额度与周期校准',
+    budget5h: '5 小时总池 ($)',
+    budgetWeekly: '每周总池 ($)',
+    btnSave: '保存额度',
+    usagePasteLabel: '粘贴 /usage 输出对齐周期',
+    usagePlaceholder: '粘贴 /usage 文本，自动同步重置时间',
+    chkCalib: '同时按官方剩余 % 反推更新总池额度',
+    btnAuto: '恢复自动',
+    btnCalib: '校准',
+    toastSaved: '已保存',
+    toastInvalidAmt: '请输入有效金额',
+    toastPasteFirst: '请先粘贴 /usage 内容',
+    toastParseFail: '解析失败',
+    toastCalibrated: '已校准',
+    toastAutoRestored: '已恢复自动',
+    toastAddedSync: '已添加并同步',
+    toastRemoved: '已移除',
+    toastAutoOn: '已开启自动同步',
+    toastAutoOff: '已关闭自动同步',
+    toastNeedHost: '请先启用 SSH 主机',
+    toastSynced: n => n > 0 ? `同步成功 (+${n} 轮)` : '已是最新',
+    toastUpToDate: '已是最新',
+    toastSyncFail: '同步失败',
+    toastOpFail: '操作失败',
+  },
+  en: {
+    brand: 'Usage Monitor',
+    planTitle: 'Plan Tier',
+    custom: 'Custom',
+    famTitle: 'Family Size',
+    famUnit: 'p',
+    langBtn: '中',
+    langTitle: '切换为中文',
+    refreshTitle: 'Refresh scan (incl. enabled SSH hosts)',
+    w5hTitle: '5-Hour Limit',
+    w7dTitle: 'Weekly Limit',
+    resetsIn: d => `Resets in ${d}`,
+    idle: 'Idle',
+    tab5h: '5h',
+    tab7d: 'Weekly',
+    tabAll: 'All',
+    statEquiv: 'API Equiv.',
+    statHit: 'Cache Hit',
+    statSaved: 'Saved',
+    thModel: 'Model',
+    thCalls: 'Calls',
+    thHit: 'Hit',
+    thCost: 'Cost',
+    noRows: 'No usage yet',
+    hostLocal: 'Local',
+    hostTip: (l, c) => `${l} · ${c} calls`,
+    modelTip: (i, cr, o, s) => `Uncached ${i} · Cache Read ${cr} · Output ${o} · Saved ${s}`,
+    remoteTitle: 'Remote SSH Hosts',
+    remoteOff: 'Off',
+    remoteSyncing: 'Syncing…',
+    remoteOn: n => `${n} on`,
+    remoteOnErr: (n, e) => `${n} on (${e} err)`,
+    remoteEmpty: 'Add an SSH host to aggregate remote App / agy CLI usage',
+    sshDiscover: 'Quick add from ~/.ssh/config',
+    sshPlaceholder: 'SSH alias or user@host[:port]',
+    btnAdd: 'Add',
+    autoSync: 'Auto sync',
+    btnSyncNow: 'Sync now',
+    stDisabled: 'Paused',
+    stError: 'Error',
+    stPending: 'Pending',
+    stScanned: (f, ms) => `${f} session(s) scanned (${ms}ms)`,
+    syncOneTitle: 'Sync host',
+    removeTitle: 'Remove',
+    justNow: 'Just now',
+    mAgo: m => `${m}m ago`,
+    hAgo: h => `${h}h ago`,
+    dAgo: d => `${d}d ago`,
+    calibTitle: 'Budgets & Reset Sync',
+    budget5h: '5h Pool ($)',
+    budgetWeekly: 'Weekly Pool ($)',
+    btnSave: 'Save',
+    usagePasteLabel: 'Paste /usage to sync reset times',
+    usagePlaceholder: 'Paste /usage output to align reset countdowns',
+    chkCalib: 'Also estimate pool budgets from remaining %',
+    btnAuto: 'Auto',
+    btnCalib: 'Sync',
+    toastSaved: 'Saved',
+    toastInvalidAmt: 'Enter valid amounts',
+    toastPasteFirst: 'Paste /usage output first',
+    toastParseFail: 'Parse failed',
+    toastCalibrated: 'Synced',
+    toastAutoRestored: 'Auto mode restored',
+    toastAddedSync: 'Added & syncing',
+    toastRemoved: 'Removed',
+    toastAutoOn: 'Auto sync on',
+    toastAutoOff: 'Auto sync off',
+    toastNeedHost: 'Enable an SSH host first',
+    toastSynced: n => n > 0 ? `Synced (+${n} calls)` : 'Up to date',
+    toastUpToDate: 'Up to date',
+    toastSyncFail: 'Sync failed',
+    toastOpFail: 'Action failed',
+  },
+};
+
+function normLang(val) {
+  if (!val) return '';
+  const s = String(val).toLowerCase();
+  if (s.startsWith('zh')) return 'zh';
+  if (s.startsWith('en')) return 'en';
+  return '';
+}
+
+let appLocaleHint = '';
+(function initThemeAndLocale() {
+  const sp = new URLSearchParams(window.location.search);
+  const qpTheme = sp.get('theme');
+  if (qpTheme === 'dark' || qpTheme === 'light') {
+    document.documentElement.dataset.theme = qpTheme;
   }
+  const qpLang = normLang(sp.get('lang') || sp.get('locale'));
+  if (qpLang) appLocaleHint = qpLang;
+
   window.addEventListener('message', (event) => {
     const d = event.data;
     if (!d || typeof d !== 'object') return;
-    if (d.type === 'theme-change' && (d.theme === 'dark' || d.theme === 'light')) {
+    if ((d.type === 'theme-change' || 'theme' in d) && (d.theme === 'dark' || d.theme === 'light')) {
       document.documentElement.dataset.theme = d.theme;
-    } else if (d.theme === 'dark' || d.theme === 'light') {
-      document.documentElement.dataset.theme = d.theme;
+    }
+    const msgLang = normLang(d.locale || d.lang || d.language);
+    if (msgLang && msgLang !== appLocaleHint) {
+      appLocaleHint = msgLang;
+      if (stateData && (!stateData.settings?.lang || stateData.settings.lang === 'auto')) {
+        renderAll();
+      }
     }
   });
 })();
+
+function getActiveLang() {
+  const cfgLang = stateData?.settings?.lang;
+  if (cfgLang === 'zh' || cfgLang === 'en') return cfgLang;
+  if (appLocaleHint) return appLocaleHint;
+  const nav = normLang((navigator.languages && navigator.languages[0]) || navigator.language);
+  return nav || 'en';
+}
+
+function t() {
+  return I18N[getActiveLang()] || I18N.en;
+}
 
 const PRESETS = {
   pro:       { b5: 15,  b7: 70 },
@@ -443,14 +623,15 @@ const fmtDur = sec => {
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m`;
 };
-const fmtAgo = epoch => {
-  if (!epoch) return '未同步';
+function fmtAgo(epoch) {
+  const L = t();
+  if (!epoch) return L.stPending;
   const diff = Math.max(0, Math.floor(Date.now() / 1000 - epoch));
-  if (diff < 60) return '刚刚';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m前`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h前`;
-  return `${Math.floor(diff / 86400)}d前`;
-};
+  if (diff < 60) return L.justNow;
+  if (diff < 3600) return L.mAgo(Math.floor(diff / 60));
+  if (diff < 86400) return L.hAgo(Math.floor(diff / 3600));
+  return L.dAgo(Math.floor(diff / 86400));
+}
 
 function showToast(msg, isErr = false, elId = 'toast') {
   const el = document.getElementById(elId);
@@ -466,14 +647,55 @@ function barColor(pct) {
   return 'var(--accent)';
 }
 
+function applyStaticStrings() {
+  const lang = getActiveLang();
+  const L = I18N[lang];
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  document.title = L.brand;
+
+  document.getElementById('brandTitle').textContent = L.brand;
+  document.getElementById('planSelect').title = L.planTitle;
+  document.getElementById('optCustom').textContent = L.custom;
+  document.getElementById('famPill').title = L.famTitle;
+  document.getElementById('btnLang').textContent = L.langBtn;
+  document.getElementById('btnLang').title = L.langTitle;
+  document.getElementById('btnRefresh').title = L.refreshTitle;
+
+  document.getElementById('tab5h').textContent = L.tab5h;
+  document.getElementById('tab7d').textContent = L.tab7d;
+  document.getElementById('tabAll').textContent = L.tabAll;
+  document.getElementById('thModel').textContent = L.thModel;
+  document.getElementById('thCalls').textContent = L.thCalls;
+  document.getElementById('thHit').textContent = L.thHit;
+  document.getElementById('thCost').textContent = L.thCost;
+
+  document.getElementById('remoteTitle').textContent = L.remoteTitle;
+  document.getElementById('sshDiscoverLabel').textContent = L.sshDiscover;
+  document.getElementById('sshInput').placeholder = L.sshPlaceholder;
+  document.getElementById('btnAddSsh').textContent = L.btnAdd;
+  document.getElementById('lblAutoSync').textContent = L.autoSync;
+  document.getElementById('btnSyncRemote').textContent = L.btnSyncNow;
+
+  document.getElementById('calibTitle').textContent = L.calibTitle;
+  document.getElementById('lblBudget5h').textContent = L.budget5h;
+  document.getElementById('lblBudgetWeekly').textContent = L.budgetWeekly;
+  document.getElementById('btnSaveBudget').textContent = L.btnSave;
+  document.getElementById('lblUsagePaste').textContent = L.usagePasteLabel;
+  document.getElementById('usagePaste').placeholder = L.usagePlaceholder;
+  document.getElementById('lblCalibBudgets').textContent = L.chkCalib;
+  document.getElementById('btnClearAnchors').textContent = L.btnAuto;
+  document.getElementById('btnParseUsage').textContent = L.btnCalib;
+}
+
 function renderQuotaCards() {
+  const L = t();
   const renderOne = (title, w) => {
     const q = w.quota;
-    const t = w.totals;
+    const tStats = w.totals;
     const pct = q.personal_share_pct;
     const clamped = Math.min(100, Math.max(0, pct));
     const color = barColor(pct);
-    const rightText = w.resets_in_sec != null ? `${fmtDur(w.resets_in_sec)} 后刷新` : '空闲待计';
+    const rightText = w.resets_in_sec != null ? L.resetsIn(fmtDur(w.resets_in_sec)) : L.idle;
     return `
       <div class="q-card">
         <div class="q-row">
@@ -482,24 +704,25 @@ function renderQuotaCards() {
         </div>
         <div class="bar-track"><div class="bar-fill" style="width:${clamped.toFixed(1)}%;background:${color}"></div></div>
         <div class="q-foot">
-          <span>${fmtUsd(t.total_cost)} / ${fmtUsd(q.per_member_budget_usd)}</span>
+          <span>${fmtUsd(tStats.total_cost)} / ${fmtUsd(q.per_member_budget_usd)}</span>
           <span>${rightText}</span>
         </div>
       </div>
     `;
   };
   document.getElementById('quotaList').innerHTML =
-    renderOne('5 小时额度', stateData.window_5h) +
-    renderOne('每周额度', stateData.window_weekly);
+    renderOne(L.w5hTitle, stateData.window_5h) +
+    renderOne(L.w7dTitle, stateData.window_weekly);
 }
 
 function renderDetail() {
+  const L = t();
   const w = activeTab === 'w5h' ? stateData.window_5h : (activeTab === 'w7d' ? stateData.window_weekly : stateData.all_time);
-  const t = w.totals;
+  const tStats = w.totals;
   document.getElementById('summaryStrip').innerHTML = `
-    <div class="stat"><div class="stat-l">等效费用</div><div class="stat-v">${fmtUsd(t.total_cost)}</div></div>
-    <div class="stat"><div class="stat-l">缓存命中</div><div class="stat-v">${(t.cache_hit_rate * 100).toFixed(0)}%</div></div>
-    <div class="stat"><div class="stat-l">缓存节省</div><div class="stat-v ok">${fmtUsd(t.cache_savings)}</div></div>
+    <div class="stat"><div class="stat-l">${L.statEquiv}</div><div class="stat-v">${fmtUsd(tStats.total_cost)}</div></div>
+    <div class="stat"><div class="stat-l">${L.statHit}</div><div class="stat-v">${(tStats.cache_hit_rate * 100).toFixed(0)}%</div></div>
+    <div class="stat"><div class="stat-l">${L.statSaved}</div><div class="stat-v ok">${fmtUsd(tStats.cache_savings)}</div></div>
   `;
 
   const hosts = w.by_host || [];
@@ -507,20 +730,21 @@ function renderDetail() {
   const hasRemote = hosts.length > 1 || hosts.some(h => h.host !== 'local');
   if (hasRemote) {
     hostStrip.style.display = 'flex';
-    hostStrip.innerHTML = hosts.map(h =>
-      `<span class="host-tag" title="${esc(h.label)} · ${h.calls} 轮">${esc(h.label)} <b>${fmtUsd(h.total_cost)}</b></span>`
-    ).join('');
+    hostStrip.innerHTML = hosts.map(h => {
+      const label = h.host === 'local' ? L.hostLocal : h.label;
+      return `<span class="host-tag" title="${esc(L.hostTip(label, h.calls))}">${esc(label)} <b>${fmtUsd(h.total_cost)}</b></span>`;
+    }).join('');
   } else {
     hostStrip.style.display = 'none';
   }
 
   const models = w.by_model || [];
   if (!models.length) {
-    document.getElementById('modelRows').innerHTML = `<tr><td colspan="4" class="empty">暂无记录</td></tr>`;
+    document.getElementById('modelRows').innerHTML = `<tr><td colspan="4" class="empty">${L.noRows}</td></tr>`;
     return;
   }
   document.getElementById('modelRows').innerHTML = models.map(m => {
-    const tip = `未缓存输入 ${fmtTok(m.input_tokens)} · 缓存读 ${fmtTok(m.cache_read_tokens)} · 输出 ${fmtTok(m.output_tokens)} · 缓存节省 ${fmtUsd(m.cache_savings)}`;
+    const tip = L.modelTip(fmtTok(m.input_tokens), fmtTok(m.cache_read_tokens), fmtTok(m.output_tokens), fmtUsd(m.cache_savings));
     return `
       <tr title="${esc(tip)}">
         <td class="m-name">${esc(m.display_model)}</td>
@@ -533,6 +757,7 @@ function renderDetail() {
 }
 
 function renderRemote() {
+  const L = t();
   const rem = stateData.remote || { hosts: [], available_ssh_hosts: [], auto_sync_sec: 60, syncing: false };
   const hosts = rem.hosts || [];
   const enabledCount = hosts.filter(h => h.enabled).length;
@@ -540,35 +765,33 @@ function renderRemote() {
 
   const sumEl = document.getElementById('remoteSummary');
   if (rem.syncing) {
-    sumEl.textContent = '同步中…';
+    sumEl.textContent = L.remoteSyncing;
     sumEl.style.color = 'var(--accent)';
   } else if (!enabledCount) {
-    sumEl.textContent = '未启用';
+    sumEl.textContent = L.remoteOff;
     sumEl.style.color = 'var(--muted)';
   } else if (errCount > 0) {
-    sumEl.textContent = `${enabledCount} 台 (${errCount} 异常)`;
+    sumEl.textContent = L.remoteOnErr(enabledCount, errCount);
     sumEl.style.color = 'var(--danger)';
   } else {
-    sumEl.textContent = `${enabledCount} 台`;
+    sumEl.textContent = L.remoteOn(enabledCount);
     sumEl.style.color = 'var(--ok)';
   }
 
-  const refreshBtn = document.getElementById('btnRefresh');
-  refreshBtn.classList.toggle('spinning', Boolean(rem.syncing));
-
+  document.getElementById('btnRefresh').classList.toggle('spinning', Boolean(rem.syncing));
   document.getElementById('chkAutoSync').checked = (rem.auto_sync_sec || 0) > 0;
 
   const listEl = document.getElementById('remoteList');
   if (!hosts.length) {
-    listEl.innerHTML = `<div style="font-size:11.5px;color:var(--muted);">添加 SSH 主机后，自动汇总远端 App / agy CLI 用量</div>`;
+    listEl.innerHTML = `<div style="font-size:11.5px;color:var(--muted);">${L.remoteEmpty}</div>`;
   } else {
     listEl.innerHTML = hosts.map(h => {
-      let stCls = '', stText = '已停用', tip = '';
+      let stCls = '', stText = L.stDisabled, tip = '';
       if (h.enabled) {
-        if (h.status === 'syncing') { stCls = 'syncing'; stText = '同步中…'; }
-        else if (h.status === 'ok') { stCls = 'ok'; stText = fmtAgo(h.last_success_epoch); tip = `已扫描 ${h.files_found} 个会话 (${h.duration_ms}ms)`; }
-        else if (h.status === 'error') { stCls = 'err'; stText = '连接失败'; tip = h.error || 'SSH 同步失败'; }
-        else { stText = '待同步'; }
+        if (h.status === 'syncing') { stCls = 'syncing'; stText = L.remoteSyncing; }
+        else if (h.status === 'ok') { stCls = 'ok'; stText = fmtAgo(h.last_success_epoch); tip = L.stScanned(h.files_found, h.duration_ms); }
+        else if (h.status === 'error') { stCls = 'err'; stText = L.stError; tip = h.error || L.stError; }
+        else { stText = L.stPending; }
       }
       return `
         <div class="remote-item" data-host="${esc(h.host)}">
@@ -578,8 +801,8 @@ function renderRemote() {
           </label>
           <span class="remote-status ${stCls}" title="${esc(tip)}">${esc(stText)}</span>
           <span class="remote-ops">
-            <button class="mini-btn js-sync-one" data-host="${esc(h.host)}" title="同步此主机">↻</button>
-            <button class="mini-btn js-del-host" data-host="${esc(h.host)}" title="移除">×</button>
+            <button class="mini-btn js-sync-one" data-host="${esc(h.host)}" title="${L.syncOneTitle}">↻</button>
+            <button class="mini-btn js-del-host" data-host="${esc(h.host)}" title="${L.removeTitle}">×</button>
           </span>
         </div>
       `;
@@ -597,7 +820,6 @@ function renderRemote() {
     wrap.style.display = 'none';
   }
 
-  // Fast poll while background sync is running so UI updates immediately on completion
   if (rem.syncing && !fastPollTimer) {
     fastPollTimer = setInterval(() => fetchUsage(false), 2000);
   } else if (!rem.syncing && fastPollTimer) {
@@ -607,13 +829,15 @@ function renderRemote() {
 }
 
 function hydrate(settings) {
+  const L = t();
   document.getElementById('planSelect').value = settings.plan;
-  document.getElementById('famLabel').textContent = `${settings.family_size}人`;
+  document.getElementById('famLabel').textContent = `${settings.family_size}${L.famUnit}`;
   document.getElementById('budget5h').value = Number(settings.budget_5h_usd.toFixed(1));
   document.getElementById('budgetWeekly').value = Number(settings.budget_weekly_usd.toFixed(1));
 }
 
 function renderAll() {
+  applyStaticStrings();
   hydrate(stateData.settings);
   renderQuotaCards();
   renderDetail();
@@ -638,36 +862,38 @@ async function patchConfig(payload, toastMsg = '') {
 }
 
 async function mutateRemote(payload, toastMsg = '') {
+  const L = t();
   const res = await fetch('/api/remote/hosts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
   const body = await res.json();
-  if (!res.ok) { showToast(body.error || '操作失败', true, 'remoteToast'); return; }
+  if (!res.ok) { showToast(body.error || L.toastOpFail, true, 'remoteToast'); return; }
   stateData = body;
   renderAll();
   if (toastMsg) showToast(toastMsg, false, 'remoteToast');
 }
 
 async function triggerRemoteSync(host = '', isAsync = false) {
+  const L = t();
   const res = await fetch('/api/remote/sync', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ host, async: isAsync }),
   });
   const body = await res.json();
-  if (!res.ok) { showToast(body.error || '同步失败', true, 'remoteToast'); return; }
+  if (!res.ok) { showToast(body.error || L.toastSyncFail, true, 'remoteToast'); return; }
   stateData = body.report;
   renderAll();
   if (!isAsync) {
     const results = body.results || [];
     const failed = results.filter(r => !r.ok);
-    if (!results.length) showToast('请先启用 SSH 主机', true, 'remoteToast');
+    if (!results.length) showToast(L.toastNeedHost, true, 'remoteToast');
     else if (failed.length) showToast(`${failed[0].host}: ${failed[0].error}`, true, 'remoteToast');
     else {
       const steps = results.reduce((acc, r) => acc + (r.steps_synced || 0), 0);
-      showToast(steps > 0 ? `同步成功 (+${steps} 轮)` : '已是最新', false, 'remoteToast');
+      showToast(L.toastSynced(steps), false, 'remoteToast');
     }
   }
 }
@@ -691,6 +917,11 @@ document.getElementById('famPlus').addEventListener('click', () => {
   if (next !== stateData.settings.family_size) patchConfig({ family_size: next });
 });
 
+document.getElementById('btnLang').addEventListener('click', () => {
+  const next = getActiveLang() === 'zh' ? 'en' : 'zh';
+  patchConfig({ lang: next });
+});
+
 document.getElementById('btnRefresh').addEventListener('click', async () => {
   await fetchUsage(true);
   const enabled = (stateData?.remote?.hosts || []).some(h => h.enabled);
@@ -698,31 +929,33 @@ document.getElementById('btnRefresh').addEventListener('click', async () => {
 });
 
 document.getElementById('btnSaveBudget').addEventListener('click', () => {
+  const L = t();
   const b5 = parseFloat(document.getElementById('budget5h').value);
   const b7 = parseFloat(document.getElementById('budgetWeekly').value);
-  if (!(b5 > 0) || !(b7 > 0)) { showToast('请输入有效金额', true); return; }
-  patchConfig({ plan: 'custom', budget_5h_usd: b5, budget_weekly_usd: b7 }, '已保存');
+  if (!(b5 > 0) || !(b7 > 0)) { showToast(L.toastInvalidAmt, true); return; }
+  patchConfig({ plan: 'custom', budget_5h_usd: b5, budget_weekly_usd: b7 }, L.toastSaved);
 });
 
 document.getElementById('btnParseUsage').addEventListener('click', async () => {
+  const L = t();
   const text = document.getElementById('usagePaste').value.trim();
   const calib = document.getElementById('chkCalibBudgets').checked;
-  if (!text) { showToast('请先粘贴 /usage 内容', true); return; }
+  if (!text) { showToast(L.toastPasteFirst, true); return; }
   const res = await fetch('/api/calibrate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, calibrate_budgets: calib }),
   });
   const body = await res.json();
-  if (!res.ok) { showToast(body.error || '解析失败', true); return; }
+  if (!res.ok) { showToast(body.error || L.toastParseFail, true); return; }
   stateData = body.report;
   renderAll();
-  showToast('已校准');
+  showToast(L.toastCalibrated);
 });
 
 document.getElementById('btnClearAnchors').addEventListener('click', () => {
   document.getElementById('usagePaste').value = '';
-  patchConfig({ clear_anchors: true }, '已恢复自动');
+  patchConfig({ clear_anchors: true }, t().toastAutoRestored);
 });
 
 document.getElementById('btnAddSsh').addEventListener('click', () => {
@@ -730,7 +963,7 @@ document.getElementById('btnAddSsh').addEventListener('click', () => {
   const host = input.value.trim();
   if (!host) return;
   input.value = '';
-  mutateRemote({ action: 'add', host }, '已添加并同步');
+  mutateRemote({ action: 'add', host }, t().toastAddedSync);
 });
 
 document.getElementById('sshInput').addEventListener('keydown', e => {
@@ -738,7 +971,8 @@ document.getElementById('sshInput').addEventListener('keydown', e => {
 });
 
 document.getElementById('chkAutoSync').addEventListener('change', e => {
-  mutateRemote({ auto_sync_sec: e.target.checked ? 60 : 0 }, e.target.checked ? '已开启自动同步' : '已关闭自动同步');
+  const L = t();
+  mutateRemote({ auto_sync_sec: e.target.checked ? 60 : 0 }, e.target.checked ? L.toastAutoOn : L.toastAutoOff);
 });
 
 document.getElementById('btnSyncRemote').addEventListener('click', () => triggerRemoteSync('', false));
@@ -746,7 +980,7 @@ document.getElementById('btnSyncRemote').addEventListener('click', () => trigger
 document.getElementById('remoteDrawer').addEventListener('click', e => {
   const chip = e.target.closest('.js-add-chip');
   if (chip) {
-    mutateRemote({ action: 'add', host: chip.dataset.host }, '已添加并同步');
+    mutateRemote({ action: 'add', host: chip.dataset.host }, t().toastAddedSync);
     return;
   }
   const syncBtn = e.target.closest('.js-sync-one');
@@ -756,7 +990,7 @@ document.getElementById('remoteDrawer').addEventListener('click', e => {
   }
   const delBtn = e.target.closest('.js-del-host');
   if (delBtn) {
-    mutateRemote({ action: 'remove', host: delBtn.dataset.host }, '已移除');
+    mutateRemote({ action: 'remove', host: delBtn.dataset.host }, t().toastRemoved);
   }
 });
 
@@ -769,7 +1003,7 @@ document.getElementById('remoteDrawer').addEventListener('change', e => {
 
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(tEl => tEl.classList.remove('active'));
     tab.classList.add('active');
     activeTab = tab.dataset.tab;
     renderDetail();

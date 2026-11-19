@@ -42,6 +42,20 @@ def query_fast_totals(conn: sqlite3.Connection, start_epoch: float, end_epoch: f
     return float(row[0]), int(row[1]), int(row[2])
 
 
+def _resolve_lang(cfg: dict) -> str:
+    lang = str(cfg.get("lang") or "auto").lower()
+    if lang in ("zh", "en"):
+        return lang
+    import os
+    for key in ("LC_ALL", "LC_MESSAGES", "LANG"):
+        val = (os.environ.get(key) or "").lower()
+        if val.startswith("zh"):
+            return "zh"
+        if val:
+            return "en"
+    return "en"
+
+
 def main() -> None:
     plain = "--plain" in sys.argv
     payload = {}
@@ -61,6 +75,7 @@ def main() -> None:
     now = time.time()
     cfg = load_config()
     st = get_effective_budget_settings(cfg)
+    lang = _resolve_lang(cfg)
 
     cost_5h = cost_7d = 0.0
     in_5h = cache_5h = 0
@@ -82,7 +97,8 @@ def main() -> None:
 
     pct_5h = (cost_5h / st["per_member_5h_usd"] * 100.0) if st["per_member_5h_usd"] > 0 else 0.0
     pct_7d = (cost_7d / st["per_member_weekly_usd"] * 100.0) if st["per_member_weekly_usd"] > 0 else 0.0
-    fam_tag = f"/{st['family_size']}人" if st["family_size"] > 1 else ""
+    unit = "人" if lang == "zh" else "p"
+    fam_tag = f"/{st['family_size']}{unit}" if st["family_size"] > 1 else ""
 
     parts = []
     if model_name:
