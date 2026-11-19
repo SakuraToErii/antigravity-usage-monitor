@@ -1,0 +1,15 @@
+{
+  "name": "local-usage-monitor",
+  "displayName": "Local Usage Monitor",
+  "version": "1.1.0",
+  "author": "SakuraToErii",
+  "homepage": "https://github.com/SakuraToErii/antigravity-usage-monitor",
+  "repository": "https://github.com/SakuraToErii/antigravity-usage-monitor",
+  "logo": "assets/logo.svg",
+  "description": "Local & SSH-remote token and API-equivalent cost monitor for Antigravity App and agy CLI, with prompt-cache pricing, 5-hour / weekly quota windows, and family-group share tracking.",
+  "suggestedPrompts": [
+    "查看我近 5 小时和本周的 Antigravity 用量与费用明细",
+    "同步远程 SSH 主机的 Antigravity 用量并汇总统计",
+    "按我账号 /usage 的重置时间校准 5 小时和每周统计窗口"
+  ]
+}

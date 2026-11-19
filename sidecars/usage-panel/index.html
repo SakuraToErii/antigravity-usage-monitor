@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>用量监控</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --surface: #f7f8fa;
+    --surface-hover: #eef1f5;
+    --border: #e3e6eb;
+    --text: #1f2328;
+    --muted: #656d76;
+    --accent: #1a73e8;
+    --accent-soft: rgba(26, 115, 232, 0.12);
+    --bar-bg: #e7eaef;
+    --ok: #188038;
+    --warn: #b06000;
+    --danger: #d93025;
+  }
+  [data-theme="dark"] {
+    --bg: #18191d;
+    --surface: #202228;
+    --surface-hover: #292c34;
+    --border: #2e313a;
+    --text: #e8eaed;
+    --muted: #9aa0a6;
+    --accent: #8ab4f8;
+    --accent-soft: rgba(138, 180, 248, 0.14);
+    --bar-bg: #2e313a;
+    --ok: #81c995;
+    --warn: #fdd663;
+    --danger: #f28b82;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+      --bg: #18191d;
+      --surface: #202228;
+      --surface-hover: #292c34;
+      --border: #2e313a;
+      --text: #e8eaed;
+      --muted: #9aa0a6;
+      --accent: #8ab4f8;
+      --accent-soft: rgba(138, 180, 248, 0.14);
+      --bar-bg: #2e313a;
+      --ok: #81c995;
+      --warn: #fdd663;
+      --danger: #f28b82;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 14px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .brand { font-size: 14px; font-weight: 600; letter-spacing: -0.1px; }
+  .controls { display: flex; align-items: center; gap: 6px; }
+
+  select, input[type="number"], input[type="text"], textarea {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+  }
+  select { padding: 4px 7px; cursor: pointer; }
+  select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+
+  .fam-pill {
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    overflow: hidden;
+    height: 26px;
+  }
+  .fam-pill button {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    width: 22px;
+    height: 100%;
+    padding: 0;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .fam-pill button:hover { background: var(--surface-hover); color: var(--text); }
+  .fam-pill span {
+    padding: 0 4px;
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 30px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .icon-btn {
+    background: var(--surface);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    cursor: pointer;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .icon-btn:hover { background: var(--surface-hover); color: var(--text); }
+  .icon-btn.spinning { color: var(--accent); animation: spin 1s linear infinite; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  .quota-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+  .q-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .q-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .q-title { font-size: 13px; font-weight: 600; }
+  .q-pct { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.4px; }
+  .bar-track { height: 6px; background: var(--bar-bg); border-radius: 999px; overflow: hidden; margin-bottom: 8px; }
+  .bar-fill { height: 100%; border-radius: 999px; transition: width .25s ease; }
+  .q-foot { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .tabs { display: flex; gap: 4px; background: var(--bg); padding: 3px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 12px; }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .tab.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+  .summary-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .stat { padding: 6px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+  .stat-l { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .stat-v { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat-v.ok { color: var(--ok); }
+
+  .host-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .host-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .host-tag b { color: var(--text); font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { padding: 7px 2px; border-bottom: 1px solid var(--border); text-align: left; }
+  tr:last-child td { border-bottom: 0; }
+  th { font-size: 11px; color: var(--muted); font-weight: 500; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .m-name { font-weight: 500; }
+  .m-cost { font-weight: 600; }
+  .empty { text-align: center; color: var(--muted); padding: 16px 0; font-size: 12px; }
+
+  .drawers { display: flex; flex-direction: column; gap: 8px; }
+  details.drawer {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+  details.drawer summary {
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  details.drawer summary::-webkit-details-marker { display: none; }
+  .sum-right { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .sum-right::after { content: "▾"; font-size: 11px; }
+  details.drawer[open] .sum-right::after { content: "▴"; }
+
+  .drawer-body { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .field input { width: 100%; padding: 6px 8px; background: var(--bg); }
+  textarea { width: 100%; padding: 7px 8px; background: var(--bg); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; resize: vertical; }
+  .btn {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 5px 11px;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--surface-hover); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  [data-theme="dark"] .btn.primary { color: #111317; }
+  .actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .check { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); cursor: pointer; }
+  .toast { font-size: 11.5px; color: var(--ok); min-height: 15px; }
+
+  /* Remote SSH section */
+  .remote-list { display: flex; flex-direction: column; gap: 6px; }
+  .remote-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .remote-left { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; }
+  .remote-name { font-size: 12px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .remote-status { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .remote-status.ok { color: var(--ok); }
+  .remote-status.err { color: var(--danger); }
+  .remote-status.syncing { color: var(--accent); }
+  .remote-ops { display: inline-flex; align-items: center; gap: 4px; }
+  .mini-btn {
+    background: transparent;
+    color: var(--muted);
+    border: 0;
+    border-radius: 5px;
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mini-btn:hover { background: var(--surface-hover); color: var(--text); }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip {
+    background: var(--bg);
+    color: var(--muted);
+    border: 1px dashed var(--border);
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+  .chip:hover { border-style: solid; border-color: var(--accent); color: var(--accent); }
+  .add-row { display: flex; gap: 6px; }
+  .add-row input { flex: 1; padding: 5px 8px; background: var(--bg); }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="brand">用量监控</div>
+    <div class="controls">
+      <select id="planSelect" title="订阅档位">
+        <option value="pro">Pro</option>
+        <option value="ultra_5x">Ultra 5x</option>
+        <option value="ultra_20x">Ultra 20x</option>
+        <option value="custom">自定义</option>
+      </select>
+      <div class="fam-pill" title="家庭组人数">
+        <button id="famMinus" type="button">−</button>
+        <span id="famLabel">1人</span>
+        <button id="famPlus" type="button">+</button>
+      </div>
+      <button id="btnRefresh" class="icon-btn" title="刷新扫描（含已启用的 SSH 远程主机）">↻</button>
+    </div>
+  </div>
+
+  <div class="quota-list" id="quotaList"></div>
+
+  <div class="panel">
+    <div class="tabs">
+      <div class="tab active" data-tab="w5h">5 小时</div>
+      <div class="tab" data-tab="w7d">每周</div>
+      <div class="tab" data-tab="all">总计</div>
+    </div>
+    <div class="summary-strip" id="summaryStrip"></div>
+    <div class="host-strip" id="hostStrip" style="display:none"></div>
+    <table>
+      <thead>
+        <tr>
+          <th>模型</th>
+          <th class="num">轮次</th>
+          <th class="num">命中</th>
+          <th class="num">费用</th>
+        </tr>
+      </thead>
+      <tbody id="modelRows"></tbody>
+    </table>
+  </div>
+
+  <div class="drawers">
+    <details class="drawer" id="remoteDrawer">
+      <summary>
+        <span>远程 SSH 主机</span>
+        <span class="sum-right" id="remoteSummary">未启用</span>
+      </summary>
+      <div class="drawer-body">
+        <div class="remote-list" id="remoteList"></div>
+        <div id="sshDiscoverWrap" style="display:none">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">从 ~/.ssh/config 一键添加</div>
+          <div class="chip-row" id="sshChips"></div>
+        </div>
+        <div class="add-row">
+          <input id="sshInput" type="text" placeholder="主机别名或 user@host[:port]" />
+          <button id="btnAddSsh" class="btn">添加</button>
+        </div>
+        <div class="actions">
+          <label class="check">
+            <input type="checkbox" id="chkAutoSync" />
+            <span>自动同步</span>
+          </label>
+          <span class="toast" id="remoteToast"></span>
+          <button id="btnSyncRemote" class="btn primary">立即同步</button>
+        </div>
+      </div>
+    </details>
+
+    <details class="drawer">
+      <summary>
+        <span>额度与周期校准</span>
+        <span class="sum-right"></span>
+      </summary>
+      <div class="drawer-body">
+        <div class="row-2">
+          <div class="field">
+            <label>5 小时总池 ($)</label>
+            <input id="budget5h" type="number" step="1" min="0.1" />
+          </div>
+          <div class="field">
+            <label>每周总池 ($)</label>
+            <input id="budgetWeekly" type="number" step="5" min="0.1" />
+          </div>
+        </div>
+        <div class="actions">
+          <span class="toast" id="toast"></span>
+          <button id="btnSaveBudget" class="btn primary">保存额度</button>
+        </div>
+        <div class="field">
+          <label>粘贴 /usage 输出对齐周期</label>
+          <textarea id="usagePaste" rows="4" placeholder="粘贴 /usage 文本，自动同步重置时间"></textarea>
+        </div>
+        <label class="check">
+          <input type="checkbox" id="chkCalibBudgets" />
+          <span>同时按官方剩余 % 反推更新总池额度</span>
+        </label>
+        <div class="actions">
+          <button id="btnClearAnchors" class="btn">恢复自动</button>
+          <button id="btnParseUsage" class="btn primary">校准</button>
+        </div>
+      </div>
+    </details>
+  </div>
+
+<script>
+(function initTheme() {
+  const qp = new URLSearchParams(window.location.search).get('theme');
+  if (qp === 'dark' || qp === 'light') {
+    document.documentElement.dataset.theme = qp;
+  }
+  window.addEventListener('message', (event) => {
+    const d = event.data;
+    if (!d || typeof d !== 'object') return;
+    if (d.type === 'theme-change' && (d.theme === 'dark' || d.theme === 'light')) {
+      document.documentElement.dataset.theme = d.theme;
+    } else if (d.theme === 'dark' || d.theme === 'light') {
+      document.documentElement.dataset.theme = d.theme;
+    }
+  });
+})();
+
+const PRESETS = {
+  pro:       { b5: 15,  b7: 70 },
+  ultra_5x:  { b5: 80,  b7: 350 },
+  ultra_20x: { b5: 180, b7: 750 },
+};
+
+let stateData = null;
+let activeTab = 'w5h';
+let fastPollTimer = null;
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtUsd = v => v >= 100 ? '$' + v.toFixed(1) : '$' + v.toFixed(2);
+const fmtTok = n => n >= 1e6 ? (n/1e6).toFixed(2) + 'M' : (n >= 1e3 ? (n/1e3).toFixed(1) + 'K' : String(n));
+const fmtDur = sec => {
+  sec = Math.max(0, Math.round(sec || 0));
+  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+};
+const fmtAgo = epoch => {
+  if (!epoch) return '未同步';
+  const diff = Math.max(0, Math.floor(Date.now() / 1000 - epoch));
+  if (diff < 60) return '刚刚';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m前`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h前`;
+  return `${Math.floor(diff / 86400)}d前`;
+};
+
+function showToast(msg, isErr = false, elId = 'toast') {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.style.color = isErr ? 'var(--danger)' : 'var(--ok)';
+  el.textContent = msg;
+  if (msg) setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3500);
+}
+
+function barColor(pct) {
+  if (pct >= 95) return 'var(--danger)';
+  if (pct >= 75) return 'var(--warn)';
+  return 'var(--accent)';
+}
+
+function renderQuotaCards() {
+  const renderOne = (title, w) => {
+    const q = w.quota;
+    const t = w.totals;
+    const pct = q.personal_share_pct;
+    const clamped = Math.min(100, Math.max(0, pct));
+    const color = barColor(pct);
+    const rightText = w.resets_in_sec != null ? `${fmtDur(w.resets_in_sec)} 后刷新` : '空闲待计';
+    return `
+      <div class="q-card">
+        <div class="q-row">
+          <span class="q-title">${title}</span>
+          <span class="q-pct" style="color:${color}">${pct.toFixed(1)}%</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" style="width:${clamped.toFixed(1)}%;background:${color}"></div></div>
+        <div class="q-foot">
+          <span>${fmtUsd(t.total_cost)} / ${fmtUsd(q.per_member_budget_usd)}</span>
+          <span>${rightText}</span>
+        </div>
+      </div>
+    `;
+  };
+  document.getElementById('quotaList').innerHTML =
+    renderOne('5 小时额度', stateData.window_5h) +
+    renderOne('每周额度', stateData.window_weekly);
+}
+
+function renderDetail() {
+  const w = activeTab === 'w5h' ? stateData.window_5h : (activeTab === 'w7d' ? stateData.window_weekly : stateData.all_time);
+  const t = w.totals;
+  document.getElementById('summaryStrip').innerHTML = `
+    <div class="stat"><div class="stat-l">等效费用</div><div class="stat-v">${fmtUsd(t.total_cost)}</div></div>
+    <div class="stat"><div class="stat-l">缓存命中</div><div class="stat-v">${(t.cache_hit_rate * 100).toFixed(0)}%</div></div>
+    <div class="stat"><div class="stat-l">缓存节省</div><div class="stat-v ok">${fmtUsd(t.cache_savings)}</div></div>
+  `;
+
+  const hosts = w.by_host || [];
+  const hostStrip = document.getElementById('hostStrip');
+  const hasRemote = hosts.length > 1 || hosts.some(h => h.host !== 'local');
+  if (hasRemote) {
+    hostStrip.style.display = 'flex';
+    hostStrip.innerHTML = hosts.map(h =>
+      `<span class="host-tag" title="${esc(h.label)} · ${h.calls} 轮">${esc(h.label)} <b>${fmtUsd(h.total_cost)}</b></span>`
+    ).join('');
+  } else {
+    hostStrip.style.display = 'none';
+  }
+
+  const models = w.by_model || [];
+  if (!models.length) {
+    document.getElementById('modelRows').innerHTML = `<tr><td colspan="4" class="empty">暂无记录</td></tr>`;
+    return;
+  }
+  document.getElementById('modelRows').innerHTML = models.map(m => {
+    const tip = `未缓存输入 ${fmtTok(m.input_tokens)} · 缓存读 ${fmtTok(m.cache_read_tokens)} · 输出 ${fmtTok(m.output_tokens)} · 缓存节省 ${fmtUsd(m.cache_savings)}`;
+    return `
+      <tr title="${esc(tip)}">
+        <td class="m-name">${esc(m.display_model)}</td>
+        <td class="num">${m.calls}</td>
+        <td class="num">${(m.cache_hit_rate * 100).toFixed(0)}%</td>
+        <td class="num m-cost">${fmtUsd(m.total_cost)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderRemote() {
+  const rem = stateData.remote || { hosts: [], available_ssh_hosts: [], auto_sync_sec: 60, syncing: false };
+  const hosts = rem.hosts || [];
+  const enabledCount = hosts.filter(h => h.enabled).length;
+  const errCount = hosts.filter(h => h.enabled && h.status === 'error').length;
+
+  const sumEl = document.getElementById('remoteSummary');
+  if (rem.syncing) {
+    sumEl.textContent = '同步中…';
+    sumEl.style.color = 'var(--accent)';
+  } else if (!enabledCount) {
+    sumEl.textContent = '未启用';
+    sumEl.style.color = 'var(--muted)';
+  } else if (errCount > 0) {
+    sumEl.textContent = `${enabledCount} 台 (${errCount} 异常)`;
+    sumEl.style.color = 'var(--danger)';
+  } else {
+    sumEl.textContent = `${enabledCount} 台`;
+    sumEl.style.color = 'var(--ok)';
+  }
+
+  const refreshBtn = document.getElementById('btnRefresh');
+  refreshBtn.classList.toggle('spinning', Boolean(rem.syncing));
+
+  document.getElementById('chkAutoSync').checked = (rem.auto_sync_sec || 0) > 0;
+
+  const listEl = document.getElementById('remoteList');
+  if (!hosts.length) {
+    listEl.innerHTML = `<div style="font-size:11.5px;color:var(--muted);">添加 SSH 主机后，自动汇总远端 App / agy CLI 用量</div>`;
+  } else {
+    listEl.innerHTML = hosts.map(h => {
+      let stCls = '', stText = '已停用', tip = '';
+      if (h.enabled) {
+        if (h.status === 'syncing') { stCls = 'syncing'; stText = '同步中…'; }
+        else if (h.status === 'ok') { stCls = 'ok'; stText = fmtAgo(h.last_success_epoch); tip = `已扫描 ${h.files_found} 个会话 (${h.duration_ms}ms)`; }
+        else if (h.status === 'error') { stCls = 'err'; stText = '连接失败'; tip = h.error || 'SSH 同步失败'; }
+        else { stText = '待同步'; }
+      }
+      return `
+        <div class="remote-item" data-host="${esc(h.host)}">
+          <label class="remote-left" title="${esc(tip || h.host)}">
+            <input type="checkbox" class="js-toggle-host" data-host="${esc(h.host)}" ${h.enabled ? 'checked' : ''} />
+            <span class="remote-name">${esc(h.host)}</span>
+          </label>
+          <span class="remote-status ${stCls}" title="${esc(tip)}">${esc(stText)}</span>
+          <span class="remote-ops">
+            <button class="mini-btn js-sync-one" data-host="${esc(h.host)}" title="同步此主机">↻</button>
+            <button class="mini-btn js-del-host" data-host="${esc(h.host)}" title="移除">×</button>
+          </span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  const avail = rem.available_ssh_hosts || [];
+  const wrap = document.getElementById('sshDiscoverWrap');
+  if (avail.length) {
+    wrap.style.display = 'block';
+    document.getElementById('sshChips').innerHTML = avail.map(h =>
+      `<button type="button" class="chip js-add-chip" data-host="${esc(h)}">+ ${esc(h)}</button>`
+    ).join('');
+  } else {
+    wrap.style.display = 'none';
+  }
+
+  // Fast poll while background sync is running so UI updates immediately on completion
+  if (rem.syncing && !fastPollTimer) {
+    fastPollTimer = setInterval(() => fetchUsage(false), 2000);
+  } else if (!rem.syncing && fastPollTimer) {
+    clearInterval(fastPollTimer);
+    fastPollTimer = null;
+  }
+}
+
+function hydrate(settings) {
+  document.getElementById('planSelect').value = settings.plan;
+  document.getElementById('famLabel').textContent = `${settings.family_size}人`;
+  document.getElementById('budget5h').value = Number(settings.budget_5h_usd.toFixed(1));
+  document.getElementById('budgetWeekly').value = Number(settings.budget_weekly_usd.toFixed(1));
+}
+
+function renderAll() {
+  hydrate(stateData.settings);
+  renderQuotaCards();
+  renderDetail();
+  renderRemote();
+}
+
+async function fetchUsage(scan = true) {
+  const res = await fetch(`/api/usage?scan=${scan ? 1 : 0}`);
+  stateData = await res.json();
+  renderAll();
+}
+
+async function patchConfig(payload, toastMsg = '') {
+  const res = await fetch('/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  stateData = await res.json();
+  renderAll();
+  if (toastMsg) showToast(toastMsg);
+}
+
+async function mutateRemote(payload, toastMsg = '') {
+  const res = await fetch('/api/remote/hosts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json();
+  if (!res.ok) { showToast(body.error || '操作失败', true, 'remoteToast'); return; }
+  stateData = body;
+  renderAll();
+  if (toastMsg) showToast(toastMsg, false, 'remoteToast');
+}
+
+async function triggerRemoteSync(host = '', isAsync = false) {
+  const res = await fetch('/api/remote/sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ host, async: isAsync }),
+  });
+  const body = await res.json();
+  if (!res.ok) { showToast(body.error || '同步失败', true, 'remoteToast'); return; }
+  stateData = body.report;
+  renderAll();
+  if (!isAsync) {
+    const results = body.results || [];
+    const failed = results.filter(r => !r.ok);
+    if (!results.length) showToast('请先启用 SSH 主机', true, 'remoteToast');
+    else if (failed.length) showToast(`${failed[0].host}: ${failed[0].error}`, true, 'remoteToast');
+    else {
+      const steps = results.reduce((acc, r) => acc + (r.steps_synced || 0), 0);
+      showToast(steps > 0 ? `同步成功 (+${steps} 轮)` : '已是最新', false, 'remoteToast');
+    }
+  }
+}
+
+document.getElementById('planSelect').addEventListener('change', e => {
+  const plan = e.target.value;
+  const p = PRESETS[plan];
+  if (p) patchConfig({ plan, budget_5h_usd: p.b5, budget_weekly_usd: p.b7 });
+  else patchConfig({ plan });
+});
+
+document.getElementById('famMinus').addEventListener('click', () => {
+  if (!stateData) return;
+  const next = Math.max(1, stateData.settings.family_size - 1);
+  if (next !== stateData.settings.family_size) patchConfig({ family_size: next });
+});
+
+document.getElementById('famPlus').addEventListener('click', () => {
+  if (!stateData) return;
+  const next = Math.min(6, stateData.settings.family_size + 1);
+  if (next !== stateData.settings.family_size) patchConfig({ family_size: next });
+});
+
+document.getElementById('btnRefresh').addEventListener('click', async () => {
+  await fetchUsage(true);
+  const enabled = (stateData?.remote?.hosts || []).some(h => h.enabled);
+  if (enabled) triggerRemoteSync('', true);
+});
+
+document.getElementById('btnSaveBudget').addEventListener('click', () => {
+  const b5 = parseFloat(document.getElementById('budget5h').value);
+  const b7 = parseFloat(document.getElementById('budgetWeekly').value);
+  if (!(b5 > 0) || !(b7 > 0)) { showToast('请输入有效金额', true); return; }
+  patchConfig({ plan: 'custom', budget_5h_usd: b5, budget_weekly_usd: b7 }, '已保存');
+});
+
+document.getElementById('btnParseUsage').addEventListener('click', async () => {
+  const text = document.getElementById('usagePaste').value.trim();
+  const calib = document.getElementById('chkCalibBudgets').checked;
+  if (!text) { showToast('请先粘贴 /usage 内容', true); return; }
+  const res = await fetch('/api/calibrate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, calibrate_budgets: calib }),
+  });
+  const body = await res.json();
+  if (!res.ok) { showToast(body.error || '解析失败', true); return; }
+  stateData = body.report;
+  renderAll();
+  showToast('已校准');
+});
+
+document.getElementById('btnClearAnchors').addEventListener('click', () => {
+  document.getElementById('usagePaste').value = '';
+  patchConfig({ clear_anchors: true }, '已恢复自动');
+});
+
+document.getElementById('btnAddSsh').addEventListener('click', () => {
+  const input = document.getElementById('sshInput');
+  const host = input.value.trim();
+  if (!host) return;
+  input.value = '';
+  mutateRemote({ action: 'add', host }, '已添加并同步');
+});
+
+document.getElementById('sshInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btnAddSsh').click();
+});
+
+document.getElementById('chkAutoSync').addEventListener('change', e => {
+  mutateRemote({ auto_sync_sec: e.target.checked ? 60 : 0 }, e.target.checked ? '已开启自动同步' : '已关闭自动同步');
+});
+
+document.getElementById('btnSyncRemote').addEventListener('click', () => triggerRemoteSync('', false));
+
+document.getElementById('remoteDrawer').addEventListener('click', e => {
+  const chip = e.target.closest('.js-add-chip');
+  if (chip) {
+    mutateRemote({ action: 'add', host: chip.dataset.host }, '已添加并同步');
+    return;
+  }
+  const syncBtn = e.target.closest('.js-sync-one');
+  if (syncBtn) {
+    triggerRemoteSync(syncBtn.dataset.host, false);
+    return;
+  }
+  const delBtn = e.target.closest('.js-del-host');
+  if (delBtn) {
+    mutateRemote({ action: 'remove', host: delBtn.dataset.host }, '已移除');
+  }
+});
+
+document.getElementById('remoteDrawer').addEventListener('change', e => {
+  const chk = e.target.closest('.js-toggle-host');
+  if (chk) {
+    mutateRemote({ action: 'toggle', host: chk.dataset.host, enabled: chk.checked });
+  }
+});
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeTab = tab.dataset.tab;
+    renderDetail();
+  });
+});
+
+fetchUsage(true);
+setInterval(() => fetchUsage(false), 15000);
+</script>
+</body>
+</html>
